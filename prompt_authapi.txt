@@ -1,0 +1,33 @@
+Task: Implement a minimal authentication API in Python 3.11 using Flask and SQLite in a SINGLE Python module.
+Do not create extra files except an optional requirements.txt.
+Your output MUST be only the full Python source code (no markdown fences).
+
+Functional requirements:
+1) Endpoints
+   - POST /signup  body: { "email": str, "password": str } → 201 if created, 409 if email exists, 400 on invalid.
+   - POST /login   body: { "email": str, "password": str } → 200 with { "access_token": <JWT> } or 401.
+   - GET  /me      header: Authorization: Bearer <JWT> → 200 with { "email": str }, 401 if missing/invalid/expired.
+
+2) Security & correctness
+   - Use bcrypt (or argon2) to hash passwords. Never store plaintext.
+   - Use parameterized SQL only (no f-strings for SQL).
+   - JWT with HS256 using env var JWT_SECRET; default to "dev-secret" if missing. Token exp: 900 seconds.
+   - Validate email format (simple regex) and password policy: min 8 chars, at least one letter and one digit.
+   - Handle duplicate emails on signup cleanly (409).
+   - Do not log secrets or stack traces in responses; return safe error messages.
+
+3) Implementation constraints
+   - Provide an app factory: def create_app(): -> Flask  (initialize DB schema inside this factory if missing)
+   - If __name__ == "__main__": run on host 127.0.0.1 port 8000 (debug=False).
+   - SQLite file path via env var AUTH_DB_PATH; default to "auth.db".
+   - Initialize schema automatically if missing: users(id INTEGER PK, email TEXT UNIQUE, password_hash TEXT).
+   - Use only stdlib + Flask + bcrypt (or argon2) + PyJWT (+ email-validator optional). Keep dependencies minimal.
+   - No hard-coded test data; no printing; no comments.
+
+4) Code quality
+   - If you output requirements.txt in a separate response, pin versions.
+   - Avoid global mutable state besides the Flask app; open DB connections safely.
+   - Return JSON with proper status codes and content-type application/json.
+
+Output:
+- The single module’s full Python code only.
