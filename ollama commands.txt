@@ -8,7 +8,7 @@ ollama list
 
 ## download models (example)
 
-ollama pull qwen2.5-coder:14b
+ollama pull qwen2.5-coder:7b
 
 ## delete all models (one-liner)
 
@@ -16,4 +16,4 @@ ollama list | awk 'NR>1 {print $1}' | xargs -r -n1 ollama rm
 
 ## communicate with models (example)
 
-ollama run qwen2.5-coder:14b
+ollama run qwen2.5-coder:7b

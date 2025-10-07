@@ -5,7 +5,8 @@ This repository benchmarks Large Language Models (LLMs) on their ability to gene
 # Instructions to run
 
 bash:
-pip install -r requirements-tests.txt
+pip install -r requirements-tests.txt (if not already done)
+
 python run_benchmark.py
 
 
