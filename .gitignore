@@ -1,0 +1,32 @@
+# Exclude all text files by default
+*.txt
+
+# But keep requirements.txt
+!requirements.txt
+
+# Virtual environment
+venv/
+.venv/
+
+# Python cache and build files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+*.db
+
+# macOS / VSCode / system files
+.DS_Store
+.vscode/
+.idea/
+
+# Optional: ignore generated candidates and database files if needed
+# Uncomment if you don’t want to version them
+# candidates/
+# database/
+
+# Environment / secret files
+.env
+*.env

@@ -1,0 +1,19 @@
+SYSTEM='You are a senior backend engineer. Output ONLY Python code for a single module. No comments, no explanations, no markdown fences.'
+
+jq -n --arg sys "$SYSTEM" --rawfile prompt prompt_authapi.txt \
+'{
+  model: "gpt-5",
+  temperature: 1,
+  messages: [
+    {role: "system", content: $sys},
+    {role: "user", content: $prompt}
+  ]
+}' \
+| curl -sS https://api.openai.com/v1/chat/completions \
+    -H "Authorization: Bearer $OPENAI_API_KEY" \
+    -H "Content-Type: application/json" \
+    --data-binary @- \
+| jq -r '.choices[0].message.content // .error.message // ""' \
+| sed -E 's/^```[a-zA-Z]*$//; s/^```$//' \
+> candidates/app_openai.py
+
