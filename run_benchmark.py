@@ -52,6 +52,7 @@ def run_pytest_for_candidate(candidate_path: Path):
     print(f"Working dir: {REPO}")
     print(f"Command    : {cmd}")
     print(f"ENV        : CANDIDATE_APP={env['CANDIDATE_APP']}  JWT_SECRET={env['JWT_SECRET']}")
+
     rc = subprocess.call(shlex.split(cmd), cwd=str(REPO), env=env)
     print(f"pytest return code: {rc}")
 
@@ -84,7 +85,7 @@ def main():
         solution_code = path.read_text(encoding="utf-8", errors="replace")
         rc, conf_json, tests_json = run_pytest_for_candidate(path)
 
-        s = tests_result_summary = tests_json.get("summary", {})
+        s = tests_json.get("summary", {})
         tests_json["mini_summary"] = {
             "total": s.get("total"),
             "passed": s.get("passed"),
