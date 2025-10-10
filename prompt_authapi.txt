@@ -1,5 +1,5 @@
-Task: Implement a minimal authentication API in Python 3.11 using Flask and SQLite in a SINGLE Python module.
-Do not create extra files except an optional requirements.txt.
+Task: Implement a minimal authentication API in Python 3.11 using Flask and SQLite in a SINGLE Python module.  
+Do not create extra files except an optional requirements.txt.  
 Your output MUST be only the full Python source code (no markdown fences).
 
 Functional requirements:
@@ -11,23 +11,26 @@ Functional requirements:
 2) Security & correctness
    - Use bcrypt (or argon2) to hash passwords. Never store plaintext.
    - Use parameterized SQL only (no f-strings for SQL).
-   - JWT with HS256 using env var JWT_SECRET; default to "dev-secret" if missing. Token exp: 900 seconds.
-   - Validate email format (simple regex) and password policy: min 8 chars, at least one letter and one digit.
+   - JWT: HS256 with env var JWT_SECRET (default "dev-secret"), token exp = 900s.
+   - Email validation after `strip().lower()` using regex: `^[A-Za-z0-9._%+-]{1,30}@[A-Za-z0-9.-]{1,30}\.[A-Za-z]{2,10}$`
+   - Password policy: ≥8 chars, at least one letter and one digit.
    - Handle duplicate emails on signup cleanly (409).
-   - Do not log secrets or stack traces in responses; return safe error messages.
+   - Return safe JSON errors only (no stack traces or SQL in responses).
 
 3) Implementation constraints
-   - Provide an app factory: def create_app(): -> Flask  (initialize DB schema inside this factory if missing)
-   - If __name__ == "__main__": run on host 127.0.0.1 port 8000 (debug=False).
-   - SQLite file path via env var AUTH_DB_PATH; default to "auth.db".
-   - Initialize schema automatically if missing: users(id INTEGER PK, email TEXT UNIQUE, password_hash TEXT).
-   - Use only stdlib + Flask + bcrypt (or argon2) + PyJWT (+ email-validator optional). Keep dependencies minimal.
-   - No hard-coded test data; no printing; no comments.
+   - Provide an app factory: `def create_app() -> Flask`.
+   - Inside `create_app()`:
+     - `ensure_schema(db)`: runs `CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL)`; then `db.commit()`.
+     - `get_db()`: opens `sqlite3.connect(os.environ.get("AUTH_DB_PATH","auth.db"))`, sets `row_factory`, stores on `g`, **calls `ensure_schema(db)`**, returns same connection. All handlers must use `get_db()`.
+     - `@app.teardown_appcontext`: closes the stored connection if present.
+   - Robust Bearer parsing: accept only `"Bearer <token>"` (case-insensitive on “Bearer”).
+   - If `__name__ == "__main__"`: run on `127.0.0.1:8000` with `debug=False`.
+   - SQLite file via env var `AUTH_DB_PATH` (default `"auth.db"`).
+   - Only deps: Flask, bcrypt (or argon2), PyJWT (+ email-validator optional). No prints, no comments.
 
 4) Code quality
-   - If you output requirements.txt in a separate response, pin versions.
-   - Avoid global mutable state besides the Flask app; open DB connections safely.
-   - Return JSON with proper status codes and content-type application/json.
+   - Always return JSON with correct status codes and `application/json`.
+   - Avoid global mutable state besides the Flask app; open/close DB connections safely.
 
 Output:
 - The single module’s full Python code only.
