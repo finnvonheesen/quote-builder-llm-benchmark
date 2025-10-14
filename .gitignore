@@ -22,10 +22,7 @@ __pycache__/
 .vscode/
 .idea/
 
-# Optional: ignore generated candidates and database files if needed
-# Uncomment if you don’t want to version them
-# candidates/
-# database/
+database/
 
 # Environment / secret files
 .env
