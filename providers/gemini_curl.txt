@@ -1,4 +1,7 @@
-export GEMINI_API_KEY="AIzaSyCEs0tOPsXPOSPspDRsRGr-1x28r5uGozs"
+## Important: export API Key befor curl command
+
+
+export GEMINI_API_KEY="Key Needs to be added"
 
 SYSTEM='You are a senior backend engineer. Output ONLY Python code for a single module. No comments, no explanations, no markdown fences.'
 

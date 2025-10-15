@@ -1,3 +1,8 @@
+## Important: export API Key befor curl command
+
+
+export OPENAI_API_KEY="Key Needs to be added"
+
 SYSTEM='You are a senior backend engineer. Output ONLY Python code for a single module. No comments, no explanations, no markdown fences.'
 
 jq -n --arg sys "$SYSTEM" --rawfile prompt prompt_authapi.txt \
