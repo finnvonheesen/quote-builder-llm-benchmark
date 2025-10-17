@@ -14,12 +14,6 @@ CONFTEST_RESULT = REPO / "conftest_result.json"
 def discover_candidates():
     return [Path(p) for p in sorted(glob(str(CANDIDATES_DIR / "app_*.py")))]
 
-def _ensure_columns(conn, table, cols):
-    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
-    for name, ddl in cols.items():
-        if name not in existing:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
-
 def ensure_db():
     DATABASE_DIR.mkdir(exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
@@ -33,32 +27,20 @@ def ensure_db():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )"""
         )
-        _ensure_columns(conn, "results", {
-            "passed_count": "INTEGER DEFAULT 0",
-            "failed_count": "INTEGER DEFAULT 0",
-            "total_count":  "INTEGER DEFAULT 0",
-            "returncode":   "INTEGER DEFAULT 0"
-        })
         conn.commit()
 
-def save_result(candidate_name: str, solution: str, conftest_json: dict, tests_json: dict,
-                passed: int, failed: int, total: int, rc: int):
+def save_result(candidate_name: str, solution: str, conftest_json: dict, tests_json: dict):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             """INSERT INTO results
-               (candidate, solution, result_conftest, result_test_auth_api, created_at,
-                passed_count, failed_count, total_count, returncode)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (candidate, solution, result_conftest, result_test_auth_api, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
             (
                 candidate_name,
                 solution,
                 json.dumps(conftest_json, ensure_ascii=False),
                 json.dumps(tests_json, ensure_ascii=False),
                 datetime.utcnow().isoformat(timespec='seconds') + 'Z',
-                int(passed or 0),
-                int(failed or 0),
-                int(total or 0),
-                int(rc or 0),
             ),
         )
         conn.commit()
@@ -93,6 +75,15 @@ def run_pytest_for_candidate(candidate_path: Path):
     else:
         tests_result = {"summary": {"note": "json-report missing"}, "returncode": rc}
 
+    # Keep a compact summary inside the stored JSON (no DB columns needed)
+    s = tests_result.get("summary", {}) or {}
+    tests_result["mini_summary"] = {
+        "total": int(s.get("total") or 0),
+        "passed": int(s.get("passed") or 0),
+        "failed": int(s.get("failed") or 0),
+        "returncode": int(rc),
+    }
+
     return rc, conftest_result, tests_result
 
 def main():
@@ -112,17 +103,10 @@ def main():
     for path in candidates:
         solution_code = path.read_text(encoding="utf-8", errors="replace")
         rc, conf_json, tests_json = run_pytest_for_candidate(path)
-
-        s = tests_json.get("summary", {}) or {}
-        total  = s.get("total")  or 0
-        passed = s.get("passed") or 0
-        failed = s.get("failed") or 0
-        tests_json["mini_summary"] = {
-            "total": int(total), "passed": int(passed), "failed": int(failed), "returncode": int(rc)
-        }
-
-        save_result(path.stem, solution_code, conf_json, tests_json, passed, failed, total, rc)
-        print(f"Saved result for {path.stem}: rc={rc}, passed={passed}, failed={failed}, total={total}")
+        save_result(path.stem, solution_code, conf_json, tests_json)
+        ms = tests_json.get("mini_summary", {})
+        print(f"Saved result for {path.stem}: rc={ms.get('returncode')}, "
+              f"passed={ms.get('passed')}, failed={ms.get('failed')}, total={ms.get('total')}")
 
 if __name__ == "__main__":
     main()
