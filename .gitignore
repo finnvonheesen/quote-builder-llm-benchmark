@@ -3,6 +3,7 @@
 
 # But keep requirements.txt
 !requirements.txt
+!test_doc.txt
 
 # Virtual environment
 venv/
