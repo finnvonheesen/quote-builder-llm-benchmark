@@ -1,25 +1,23 @@
-## Important: export API Key befor curl command
-
-
-export GEMINI_API_KEY="Key Needs to be added"
-
 SYSTEM='You are a senior backend engineer. Output ONLY Python code for a single module. No comments, no explanations, no markdown fences.'
 
 PROMPT_JSON=$(jq -Rs . < prompt_authapi.txt)
+START=$(date +%s)
 
 curl -sS "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent" \
   -H "Content-Type: application/json" \
   -H "x-goog-api-key: $GEMINI_API_KEY" \
   -d '{
-    "systemInstruction": {
-      "parts": [{ "text": "'"$SYSTEM"'" }]
-    },
-    "contents": [{
-      "role": "user",
-      "parts": [{ "text": '"$PROMPT_JSON"' }]
-    }]
+    "systemInstruction": { "parts": [{ "text": "'"$SYSTEM"'" }] },
+    "contents": [{ "role": "user", "parts": [{ "text": '"$PROMPT_JSON"' }] }]
   }' \
 | tee /tmp/gemini_raw.json \
 | jq -r '.candidates[0].content.parts[0].text // .error.message // ""' \
 | sed -E 's/^```[a-zA-Z]*$//; s/^```$//' \
 > candidates/app_gemini.py
+
+END=$(date +%s)
+RUNTIME=$((END - START))
+
+# Gemini currently doesn't expose token counts via REST; placeholder 0s for now
+echo "gemini-2.5-pro,0,0,0,$RUNTIME" >> benchmark_log.csv
+echo "✅ Gemini 2.5 Pro done → candidates/app_gemini.py"
