@@ -1,0 +1,19 @@
+claude sonnet 4: {
+  "input_tokens": 753,
+  "output_tokens": 1593,
+  "total": 2346
+}
+
+
+gpt5: {
+  "input_tokens": 653,
+  "output_tokens": 3262,
+  "total": 3915
+}
+
+gemini: {
+  "input_tokens": 731,
+  "output_tokens": 1379, 
+  "total": 5744
+}
+
