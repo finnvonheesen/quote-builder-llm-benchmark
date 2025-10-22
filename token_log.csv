@@ -4,7 +4,6 @@ claude sonnet 4: {
   "total": 2346
 }
 
-
 gpt5: {
   "input_tokens": 653,
   "output_tokens": 3262,
