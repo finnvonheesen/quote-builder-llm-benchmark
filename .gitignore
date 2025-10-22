@@ -1,9 +1,9 @@
 # Exclude all text files by default
 *.txt
 
-# But keep requirements.txt
+# But keep important text files
 !requirements.txt
-!test_doc.txt
+!prompt_auth_api.txt
 
 # Virtual environment
 venv/
@@ -11,6 +11,7 @@ venv/
 
 # Python cache and build files
 __pycache__/
+*/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -23,11 +24,13 @@ __pycache__/
 .vscode/
 .idea/
 
-database/
-
 # Environment / secret files
 .env
 *.env
 
+# Hypothesis test artifacts
 .hypothesis/
+*/.hypothesis/
 
+# Candidate artifacts
+candidates/__pycache__/

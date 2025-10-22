@@ -19,7 +19,7 @@ Each run performs:
 # How to Run the Benchmark
 
 ## 1. Install dependencies
-pip install -r requirements-tests.txt
+pip install -r requirements.txt
 
 ## 2. Run the benchmark
 python run_benchmark.py
