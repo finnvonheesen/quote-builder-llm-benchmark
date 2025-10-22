@@ -17,3 +17,8 @@ gemini: {
   "total": 5744
 }
 
+qwen 3 coder: {
+  "input_tokens": 682,
+  "output_tokens": 1094,
+  "total": 1776
+}

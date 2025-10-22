@@ -1,7 +1,7 @@
 import os
 import re
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
 import bcrypt
@@ -36,10 +36,14 @@ def create_app() -> Flask:
         if db is not None:
             db.close()
     
-    def validate_email(email: str) -> bool:
-        email = email.strip().lower()
+    def validate_email(raw_email: Any) -> Optional[str]:
+        if not isinstance(raw_email, str):
+            return None
+        email = raw_email.strip().lower()
         pattern = r'^[A-Za-z0-9._%+-]{1,30}@[A-Za-z0-9.-]{1,30}\.[A-Za-z]{2,10}$'
-        return bool(re.match(pattern, email))
+        if re.fullmatch(pattern, email):
+            return email
+        return None
     
     def validate_password(password: str) -> bool:
         if len(password) < 8:
@@ -53,13 +57,16 @@ def create_app() -> Flask:
         return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
     def verify_password(password: str, password_hash: str) -> bool:
-        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        try:
+            return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        except (ValueError, TypeError):
+            return False
     
     def generate_jwt(email: str) -> str:
         secret = os.environ.get("JWT_SECRET", "dev-secret")
+        now = datetime.now(timezone.utc)
         payload = {
-            "email": email,
-            "exp": datetime.utcnow() + timedelta(seconds=900)
+            "sub": email, "iat": now, "exp": now + timedelta(seconds=900)
         }
         return jwt.encode(payload, secret, algorithm="HS256")
     
@@ -86,82 +93,72 @@ def create_app() -> Flask:
     
     @app.route('/signup', methods=['POST'])
     def signup():
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid request"}), 400
+
+        email = validate_email(data.get("email"))
+        password = data.get("password")
+
+        if not email:
+            return jsonify({"error": "Invalid email format"}), 400
+        
+        if not isinstance(password, str) or not validate_password(password):
+            return jsonify({"error": "Password must be at least 8 characters with at least one letter and one digit"}), 400
+        
+        db = get_db()
         try:
-            data = request.get_json()
-            if not data or 'email' not in data or 'password' not in data:
-                return jsonify({"error": "Email and password are required"}), 400
-            
-            email = data['email'].strip().lower()
-            password = data['password']
-            
-            if not validate_email(email):
-                return jsonify({"error": "Invalid email format"}), 400
-            
-            if not validate_password(password):
-                return jsonify({"error": "Password must be at least 8 characters with at least one letter and one digit"}), 400
-            
-            db = get_db()
-            
-            existing_user = db.execute(
-                "SELECT id FROM users WHERE email = ?", (email,)
-            ).fetchone()
-            
-            if existing_user:
-                return jsonify({"error": "Email already exists"}), 409
-            
             password_hash = hash_password(password)
-            
             db.execute(
                 "INSERT INTO users (email, password_hash) VALUES (?, ?)",
                 (email, password_hash)
             )
             db.commit()
-            
-            return jsonify({"message": "User created successfully"}), 201
-            
-        except Exception:
-            return jsonify({"error": "Invalid request"}), 400
+        except sqlite3.IntegrityError:
+            return jsonify({"error": "Email already exists"}), 409
+
+        return jsonify({"message": "User created successfully"}), 201
     
     @app.route('/login', methods=['POST'])
     def login():
-        try:
-            data = request.get_json()
-            if not data or 'email' not in data or 'password' not in data:
-                return jsonify({"error": "Email and password are required"}), 400
-            
-            email = data['email'].strip().lower()
-            password = data['password']
-            
-            db = get_db()
-            user = db.execute(
-                "SELECT email, password_hash FROM users WHERE email = ?", (email,)
-            ).fetchone()
-            
-            if not user or not verify_password(password, user['password_hash']):
-                return jsonify({"error": "Invalid credentials"}), 401
-            
-            access_token = generate_jwt(user['email'])
-            
-            return jsonify({"access_token": access_token}), 200
-            
-        except Exception:
+        data = request.get_json()
+        if not data:
             return jsonify({"error": "Invalid request"}), 400
+
+        email = validate_email(data.get("email"))
+        password = data.get("password")
+
+        if not email or not isinstance(password, str):
+            return jsonify({"error": "Invalid credentials"}), 401
+
+        db = get_db()
+        user = db.execute(
+            "SELECT email, password_hash FROM users WHERE email = ?", (email,)
+        ).fetchone()
+        
+        if not user or not verify_password(password, user['password_hash']):
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        access_token = generate_jwt(user['email'])
+        return jsonify({"access_token": access_token}), 200
     
     @app.route('/me', methods=['GET'])
     def me():
-        try:
-            token = extract_bearer_token()
-            if not token:
-                return jsonify({"error": "Authorization header required"}), 401
-            
-            payload = decode_jwt(token)
-            if not payload:
-                return jsonify({"error": "Invalid or expired token"}), 401
-            
-            return jsonify({"email": payload['email']}), 200
-            
-        except Exception:
+        token = extract_bearer_token()
+        if not token:
+            return jsonify({"error": "Authorization header required"}), 401
+        
+        payload = decode_jwt(token)
+        if not payload or "sub" not in payload:
+            return jsonify({"error": "Invalid or expired token"}), 401
+        
+        email = payload["sub"]
+        db = get_db()
+        user = db.execute("SELECT email FROM users WHERE email = ?", (email,)).fetchone()
+        if not user:
             return jsonify({"error": "Invalid request"}), 401
+
+        return jsonify({"email": user["email"]}), 200
     
     return app
 
@@ -169,4 +166,3 @@ def create_app() -> Flask:
 if __name__ == "__main__":
     app = create_app()
     app.run(host="127.0.0.1", port=8000, debug=False)
-

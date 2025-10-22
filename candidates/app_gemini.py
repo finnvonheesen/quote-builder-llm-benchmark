@@ -16,6 +16,18 @@ EMAIL_REGEX = re.compile(r"^[A-Za-z0-9._%+-]{1,30}@[A-Za-z0-9.-]{1,30}\.[A-Za-z]
 PASSWORD_REGEX = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
 
 
+def normalize_email(raw_email: Any) -> str | None:
+    if not isinstance(raw_email, str):
+        return None
+    email = raw_email.strip().lower()
+    if not EMAIL_REGEX.fullmatch(email):
+        return None
+    local_part, domain_part = email.split("@", 1)
+    if ".." in local_part or ".." in domain_part:
+        return None
+    return email
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config["JWT_SECRET"] = JWT_SECRET
@@ -63,7 +75,9 @@ def create_app() -> Flask:
                 payload = jwt.decode(
                     token, app.config["JWT_SECRET"], algorithms=["HS256"]
                 )
-                email = payload["sub"]
+                email = payload.get("sub") if isinstance(payload, dict) else None
+                if not isinstance(email, str):
+                    return jsonify({"error": "Invalid token"}), 401
                 db = get_db()
                 user = db.execute(
                     "SELECT email FROM users WHERE email = ?", (email,)
@@ -86,12 +100,12 @@ def create_app() -> Flask:
         if not data or "email" not in data or "password" not in data:
             return jsonify({"error": "Email and password are required"}), 400
 
-        email = str(data["email"]).strip().lower()
-        password = str(data["password"])
+        email = normalize_email(data["email"])
+        password = data["password"]
 
-        if not EMAIL_REGEX.fullmatch(email):
+        if not email:
             return jsonify({"error": "Invalid email format"}), 400
-        if not PASSWORD_REGEX.fullmatch(password):
+        if not isinstance(password, str) or not PASSWORD_REGEX.fullmatch(password):
             return jsonify(
                 {
                     "error": "Password must be at least 8 characters long and contain at least one letter and one number"
@@ -118,8 +132,11 @@ def create_app() -> Flask:
         if not data or "email" not in data or "password" not in data:
             return jsonify({"error": "Email and password are required"}), 400
 
-        email = str(data["email"]).strip().lower()
-        password = str(data["password"])
+        email = normalize_email(data["email"])
+        password = data["password"]
+
+        if not email or not isinstance(password, str):
+            return jsonify({"error": "Invalid email or password"}), 401
 
         db = get_db()
         user = db.execute(
@@ -151,4 +168,3 @@ def create_app() -> Flask:
 if __name__ == "__main__":
     app = create_app()
     app.run(host="127.0.0.1", port=8000, debug=False)
-
