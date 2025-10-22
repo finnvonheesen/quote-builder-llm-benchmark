@@ -36,7 +36,9 @@ def create_app():
     def validate_email(email):
         email = email.strip().lower()
         pattern = r'^[A-Za-z0-9._%+-]{1,30}@[A-Za-z0-9.-]{1,30}\.[A-Za-z]{2,10}$'
-        return re.fullmatch(pattern, email)
+        if re.fullmatch(pattern, email) and ".." not in email:
+            return True
+        return False
 
     def validate_password(password):
         if len(password) < 8:
@@ -63,7 +65,8 @@ def create_app():
         if not validate_password(password):
             return jsonify({"error": "Password must be at least 8 characters with at least one letter and one digit"}), 400
 
-        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        rounds = int(os.environ.get("BCRYPT_ROUNDS", 12))
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=rounds))
 
         db = get_db()
         try:
@@ -96,7 +99,7 @@ def create_app():
         secret = os.environ.get("JWT_SECRET", "dev-secret")
         payload = {
             "sub": row["id"],
-            "exp": datetime.utcnow() + timedelta(seconds=900)
+            "exp": datetime.now(timezone.utc) + timedelta(seconds=900)
         }
         token = jwt.encode(payload, secret, algorithm="HS256")
 

@@ -11,6 +11,8 @@ from flask import Flask, request, jsonify, g
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    app.config["JWT_SECRET"] = os.environ.get("JWT_SECRET", "dev-secret")
+    app.config["BCRYPT_ROUNDS"] = int(os.environ.get("BCRYPT_ROUNDS", "12"))
     
     def ensure_schema(db: sqlite3.Connection) -> None:
         db.execute("""
@@ -42,6 +44,8 @@ def create_app() -> Flask:
         email = raw_email.strip().lower()
         pattern = r'^[A-Za-z0-9._%+-]{1,30}@[A-Za-z0-9.-]{1,30}\.[A-Za-z]{2,10}$'
         if re.fullmatch(pattern, email):
+            if ".." in email: # Disallow consecutive dots anywhere in the email
+                return None
             return email
         return None
     
@@ -53,7 +57,7 @@ def create_app() -> Flask:
         return has_letter and has_digit
     
     def hash_password(password: str) -> str:
-        salt = bcrypt.gensalt()
+        salt = bcrypt.gensalt(rounds=app.config["BCRYPT_ROUNDS"])
         return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
     def verify_password(password: str, password_hash: str) -> bool:
@@ -63,17 +67,15 @@ def create_app() -> Flask:
             return False
     
     def generate_jwt(email: str) -> str:
-        secret = os.environ.get("JWT_SECRET", "dev-secret")
         now = datetime.now(timezone.utc)
         payload = {
             "sub": email, "iat": now, "exp": now + timedelta(seconds=900)
         }
-        return jwt.encode(payload, secret, algorithm="HS256")
+        return jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
     
     def decode_jwt(token: str) -> Optional[Dict[str, Any]]:
         try:
-            secret = os.environ.get("JWT_SECRET", "dev-secret")
-            return jwt.decode(token, secret, algorithms=["HS256"])
+            return jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"])
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return None
     

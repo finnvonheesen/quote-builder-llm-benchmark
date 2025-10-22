@@ -39,12 +39,16 @@ def create_app() -> Flask:
         if not isinstance(raw, str):
             return None
         e = raw.strip().lower()
-        if not email_regex.fullmatch(e):
+        if ".." in e or not email_regex.fullmatch(e):
             return None
         return e
 
     def validate_password(pw: str) -> bool:
         if not isinstance(pw, str):
+            return False
+        # The regex was too permissive and allowed empty strings.
+        # Let's stick to a more explicit check.
+        if not pw:
             return False
         if len(pw) < 8:
             return False
@@ -53,7 +57,8 @@ def create_app() -> Flask:
         return has_letter and has_digit
 
     def hash_password(pw: str) -> str:
-        return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        rounds = int(os.environ.get("BCRYPT_ROUNDS", 12))
+        return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt(rounds=rounds)).decode("utf-8")
 
     def check_password(pw: str, hashed: str) -> bool:
         try:

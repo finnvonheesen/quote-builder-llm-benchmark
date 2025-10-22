@@ -112,7 +112,9 @@ def create_app() -> Flask:
                 }
             ), 400
 
-        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+        # Use a configurable cost factor for bcrypt to speed up tests.
+        rounds = int(os.environ.get("BCRYPT_ROUNDS", "12"))
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=rounds))
 
         db = get_db()
         try:
