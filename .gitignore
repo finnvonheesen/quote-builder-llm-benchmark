@@ -9,6 +9,9 @@
 venv/
 .venv/
 
+providers/
+
+
 # Python cache and build files
 __pycache__/
 */__pycache__/
